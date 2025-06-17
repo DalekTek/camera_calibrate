@@ -102,3 +102,7 @@ python main.py
 - Шахматная доска должна быть хорошо освещена и не иметь бликов
 - Изображения должны быть сделаны под разными углами
 - Для fisheye камер рекомендуется использовать больше изображений (15-20)
+
+# Автор
+[Nadezhda Shiryaeva] - [sns0898@gmail.com]
+Изображения calibration_images/right*.jpg взяты с [opencv](https://github.com/opencv/opencv/tree/master/samples/data)
