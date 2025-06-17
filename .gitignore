@@ -198,3 +198,4 @@ logs/*
 
 my_files/
 .npz
+fisheye_calibration_images/*
