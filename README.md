@@ -143,5 +143,6 @@ python main.py
 - Приемлемое качество: ошибка < 2.0 пикселей
 - Низкое качество: ошибка > 2.0 пикселей
 
-# Автор
+## Автор
 [Nadezhda Shiryaeva] - [sns0898@gmail.com]
+Изображения calibration_images/right*.jpg взяты с [opencv](https://github.com/opencv/opencv/tree/master/samples/data)
