@@ -197,5 +197,5 @@ cython_debug/
 logs/*
 
 my_files/
-.npz
+*.npz
 fisheye_calibration_images/*

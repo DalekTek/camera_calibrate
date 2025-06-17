@@ -260,18 +260,15 @@ class CameraCalibrator:
         cv2.destroyAllWindows()
 
 
-def run_calibrate(logger: logging.Logger):
+def run_calibrate(logger: logging.Logger, images_folder: str = "calibration_images"):
     """Пример использования калибратора"""
 
     # Создание калибратора
     # Для стандартной шахматной доски 10x7 внутренних углов используйте (9,6)
     calibrator = CameraCalibrator(logger, pattern_size=(9, 6))
 
-    # Вариант 1: Калибровка по папке с изображениями
-    images_folder = "calibration_images"  # Укажите путь к вашей папке
-
-    # Вариант 2: Калибровка по паттерну файлов
-    # images_pattern = "calibration_images/*.jpg"
+    logger.info("Starting camera calibration...")
+    logger.info("-" * 60)
 
     # Выполнение калибровки
     if calibrator.calibrate_from_images(images_folder):
