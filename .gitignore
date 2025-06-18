@@ -194,8 +194,10 @@ cython_debug/
 .cursorindexingignore
 
 *.idea/
+*.github/
 logs/*
 
 my_files/
+my_files/*
 *.npz
 fisheye_calibration_images/*

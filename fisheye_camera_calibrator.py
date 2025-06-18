@@ -410,7 +410,7 @@ class FisheyeCalibrator:
         )
         return cv2.remap(img, map1, map2, interpolation=cv2.INTER_LINEAR)
 
-    def show_undistortion_comparison(self, image_path: str):
+    def show_undistortion_comparison(self, image_path: str, undistorted: np.ndarray):
         """
         Показать сравнение различных методов исправления fisheye
         
@@ -426,34 +426,12 @@ class FisheyeCalibrator:
             self.logger.error(f"Couldn't load image: {image_path}")
             return
 
-        # Создание исправленных версий
-        methods: List[str] = ['equirectangular', 'perspective']
-        results: List[np.ndarray] = [img]  # Оригинал
-
-        for method in methods:
-            undistorted: Optional[np.ndarray] = self.undistort_fisheye(image_path, method=method)
-            if undistorted is not None:
-                results.append(undistorted)
-
-        # Изменение размера для отображения
-        display_height: int = 300
-        display_results: List[np.ndarray] = []
-        for result in results:
-            aspect_ratio: float = result.shape[1] / result.shape[0]
-            display_width: int = int(display_height * aspect_ratio)
-            resized: np.ndarray = cv2.resize(result, (display_width, display_height))
-            display_results.append(resized)
-
         # Создание сравнительного изображения
-        comparison: np.ndarray = np.hstack(display_results)
+        comparison: np.ndarray = np.hstack((img, undistorted))
 
-        # Добавление подписей
-        labels: List[str] = ['Original', 'Equirectangular', 'Perspective']
-        x_offset: int = 0
-        for i, (result, label) in enumerate(zip(display_results, labels)):
-            cv2.putText(comparison, label, (x_offset + 10, 30),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-            x_offset += result.shape[1]
+        # Добавление текста
+        cv2.putText(comparison, "Original", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 3)
+        cv2.putText(comparison, "Undistorted", (img.shape[1] + 50, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 3)
 
         # Показать результат
         cv2.imshow("Fisheye Undistortion Comparison", comparison)
@@ -571,7 +549,7 @@ def run_fisheye_calibration(logger: logging.Logger, images_folder: str = "fishey
             for image_path in calibrator.image_paths:
                 logger.info(f"Processing image: {image_path}")
                 # calibrator.undistort_fisheye(image_path, output_dir, "equirectangular")
-                calibrator.undistort_fisheye(image_path, output_dir, "perspective")
+                undistorted = calibrator.undistort_fisheye(image_path, output_dir, "perspective")
 
-                # Показать сравнение методов
-                # calibrator.show_undistortion_comparison(image_path)
+                # Показать исходное и исправленное изображения
+                # calibrator.show_undistortion_comparison(image_path, undistorted)

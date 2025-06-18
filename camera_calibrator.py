@@ -33,6 +33,7 @@ class CameraCalibrator:
         self.image_size: Optional[Tuple[int, int]] = None
 
         self.logger = logger
+        self.image_paths = []
 
     def find_chessboard_corners(self, image_path: str) -> bool:
         """
@@ -100,6 +101,7 @@ class CameraCalibrator:
         for img_path in image_files:
             if self.find_chessboard_corners(img_path):
                 successful_detections += 1
+                self.image_paths.append(img_path)
 
         self.logger.info(f"\nSuccessfully processed {successful_detections} out of {len(image_files)} images")
 
@@ -207,13 +209,13 @@ class CameraCalibrator:
             self.logger.error(f"Error loading {filename}")
             return False
 
-    def undistort_image(self, image_path: str, output_path: Optional[str] = None) -> Optional[np.ndarray]:
+    def undistort_image(self, image_path: str, output_dir: str) -> Optional[np.ndarray]:
         """
         Исправление дисторсии изображения
 
         Args:
             image_path: путь к исходному изображению
-            output_path: путь для сохранения исправленного изображения
+            output_dir: путь к выходной папке
         """
         if self.camera_matrix is None:
             self.logger.error("First perform calibration or load parameters!")
@@ -227,13 +229,18 @@ class CameraCalibrator:
         # Исправление дисторсии
         undistorted: np.ndarray = cv2.undistort(img, self.camera_matrix, self.dist_coeffs, None, None)
 
+        # Генерация имени выходного файла
+        name, ext = os.path.splitext(image_path)
+        output_filename = f"{name}_undistorted{ext}"
+        output_path = os.path.join(output_dir, output_filename)
+        
         if output_path:
             cv2.imwrite(output_path, undistorted)
             self.logger.info(f"Corrected image saved: {output_path}")
 
         return undistorted
 
-    def show_comparison(self, image_path: str):
+    def show_comparison(self, image_path: str, undistorted: np.ndarray):
         """Показать сравнение исходного и исправленного изображения"""
         if self.camera_matrix is None:
             self.logger.error("First perform calibration!")
@@ -243,9 +250,6 @@ class CameraCalibrator:
         if img is None:
             self.logger.error(f"Failed to load image: {image_path}")
             return
-
-        # Исправление дисторсии
-        undistorted: np.ndarray = cv2.undistort(img, self.camera_matrix, self.dist_coeffs, None, None)
 
         # Создание сравнительного изображения
         comparison: np.ndarray = np.hstack((img, undistorted))
@@ -270,15 +274,21 @@ def run_calibrate(logger: logging.Logger, images_folder: str = "calibration_imag
     logger.info("Starting camera calibration...")
     logger.info("-" * 60)
 
+    # Подготовка директории для сохранения исправленных изображений
+    output_dir = os.path.join(images_folder, "undistorted_perspective")
+    os.makedirs(output_dir, exist_ok=True)
+     
     # Выполнение калибровки
     if calibrator.calibrate_from_images(images_folder):
         # Сохранение результатов
         calibrator.save_calibration("my_camera_calibration.npz")
 
         # Пример исправления дисторсии
-        # calibrator.undistort_image("test_image.jpg", "undistorted_image.jpg")
-
-        # Показать сравнение (раскомментируйте если нужно)
-        # calibrator.show_comparison("test_image.jpg")
+        if calibrator.image_paths and calibrator.camera_matrix is not None:
+            for image_path in calibrator.image_paths:
+                logger.info(f"Processing image: {image_path}")
+                undistorted = calibrator.undistort_image(image_path, output_dir)
+        
+                # calibrator.show_comparison(image_path, undistorted)
 
     logger.info("\nDone!")
