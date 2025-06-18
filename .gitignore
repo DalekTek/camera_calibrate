@@ -192,3 +192,12 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
+
+*.idea/
+*.github/
+logs/*
+
+my_files/
+my_files/*
+*.npz
+fisheye_calibration_images/*
