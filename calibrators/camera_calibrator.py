@@ -1,4 +1,4 @@
- """
+"""
 Калибратор для обычных камер.
 
 Предоставляет функциональность для калибровки обычных камер
@@ -8,26 +8,28 @@
 import cv2
 import numpy as np
 import os
-import glob
 import logging
 from typing import Tuple, List, Optional, Union
 from pathlib import Path
 
-from ..constants import (
+from calibrators.base_calibrator import BaseCalibrator
+from utils.image_handler import get_image_files
+from constants import (
     DEFAULT_PATTERN_SIZE,
     DEFAULT_SQUARE_SIZE,
-    SUPPORTED_IMAGE_FORMATS,
     CALIBRATION_QUALITY_THRESHOLDS,
     CHESSBOARD_DETECTION_FLAGS,
     CORNER_REFINEMENT_CRITERIA,
     CORNER_REFINEMENT_WINDOW_SIZE,
     ERROR_MESSAGES,
     WARNING_MESSAGES,
-    INFO_MESSAGES
+    INFO_MESSAGES,
+    PATH_TO_CALIBRATE_IMG
 )
 
 
-class CameraCalibrator:
+
+class CameraCalibrator(BaseCalibrator):
     """
     Калибратор для обычных камер.
     
@@ -46,7 +48,6 @@ class CameraCalibrator:
         image_points: 2D точки изображения
         logger: Объект логгера
     """
-    
     def __init__(self, logger: logging.Logger, pattern_size: Tuple[int, int] = DEFAULT_PATTERN_SIZE):
         """
         Инициализация калибратора камеры.
@@ -55,26 +56,10 @@ class CameraCalibrator:
             logger: Объект логгера для записи сообщений
             pattern_size: Размер шахматной доски (внутренние углы) - (ширина, высота)
         """
-        self.pattern_size: Tuple[int, int] = pattern_size
-        self.square_size: float = DEFAULT_SQUARE_SIZE
-
-        # Массивы для хранения точек объекта и изображения
-        self.object_points: List[np.ndarray] = []
-        self.image_points: List[np.ndarray] = []
-
-        # Подготовка объектных точек
+        super().__init__(logger, pattern_size, DEFAULT_SQUARE_SIZE)
         self.objp: np.ndarray = np.zeros((pattern_size[1] * pattern_size[0], 3), np.float32)
         self.objp[:, :2] = np.mgrid[0:pattern_size[0], 0:pattern_size[1]].T.reshape(-1, 2)
         self.objp *= self.square_size
-
-        # Параметры калибровки (будут заполнены после калибровки)
-        self.camera_matrix: Optional[np.ndarray] = None
-        self.dist_coeffs: Optional[np.ndarray] = None
-        self.rvecs: Optional[List[np.ndarray]] = None
-        self.tvecs: Optional[List[np.ndarray]] = None
-        self.image_size: Optional[Tuple[int, int]] = None
-
-        self.logger: logging.Logger = logger
 
     def find_chessboard_corners(self, image_path: Union[str, Path]) -> bool:
         """
@@ -110,9 +95,7 @@ class CameraCalibrator:
                        CORNER_REFINEMENT_CRITERIA[0], 
                        CORNER_REFINEMENT_CRITERIA[1])
             
-            corners2: np.ndarray = cv2.cornerSubPix(
-                gray, corners, CORNER_REFINEMENT_WINDOW_SIZE, (-1, -1), criteria
-            )
+            corners2: np.ndarray = cv2.cornerSubPix(gray, corners, CORNER_REFINEMENT_WINDOW_SIZE, (-1, -1), criteria)
 
             # Сохранение найденных точек
             self.object_points.append(self.objp)
@@ -135,7 +118,7 @@ class CameraCalibrator:
             bool: True если калибровка успешна, False иначе
         """
         # Получение списка изображений
-        image_files: List[str] = self._get_image_files(images_path)
+        image_files: List[str] = get_image_files(images_path)
 
         if not image_files:
             self.logger.error(ERROR_MESSAGES['no_images_found'])
@@ -172,27 +155,6 @@ class CameraCalibrator:
         else:
             self.logger.error(ERROR_MESSAGES['calibration_failed'])
             return False
-
-    def _get_image_files(self, images_path: Union[str, Path]) -> List[str]:
-        """
-        Получение списка файлов изображений.
-        
-        Args:
-            images_path: Путь к папке с изображениями
-            
-        Returns:
-            List[str]: Список путей к файлам изображений
-        """
-        images_path = Path(images_path)
-        
-        if images_path.is_dir():
-            image_files = []
-            for ext in SUPPORTED_IMAGE_FORMATS:
-                image_files.extend(glob.glob(str(images_path / f"*{ext}")))
-                image_files.extend(glob.glob(str(images_path / f"*{ext.upper()}")))
-            return image_files
-        else:
-            return glob.glob(str(images_path))
 
     def print_calibration_results(self) -> None:
         """Вывод результатов калибровки."""
@@ -312,13 +274,13 @@ class CameraCalibrator:
             return False
 
     def undistort_image(self, image_path: Union[str, Path], 
-                       output_path: Optional[Union[str, Path]] = None) -> Optional[np.ndarray]:
+                       output_dir: Union[str, Path]) -> Optional[np.ndarray]:
         """
         Исправление дисторсии изображения.
 
         Args:
             image_path: Путь к исходному изображению
-            output_path: Путь для сохранения исправленного изображения
+            output_dir: путь к выходной папке c исправленными изображениями
 
         Returns:
             Optional[np.ndarray]: Исправленное изображение или None в случае ошибки
@@ -335,13 +297,18 @@ class CameraCalibrator:
         # Исправление дисторсии
         undistorted: np.ndarray = cv2.undistort(img, self.camera_matrix, self.dist_coeffs, None, None)
 
+        # Генерация имени выходного файла
+        name, ext = os.path.splitext(image_path)
+        output_filename = f"{name}_undistorted{ext}"
+        output_path = os.path.join(output_dir, output_filename)
+
         if output_path:
             cv2.imwrite(str(output_path), undistorted)
             self.logger.info(f"Corrected image saved: {output_path}")
 
         return undistorted
 
-    def show_comparison(self, image_path: Union[str, Path]) -> None:
+    def show_comparison(self, image_path: Union[str, Path], undistorted: np.ndarray) -> None:
         """
         Показать сравнение исходного и исправленного изображения.
         
@@ -356,9 +323,6 @@ class CameraCalibrator:
         if img is None:
             self.logger.error(f"Failed to load image: {image_path}")
             return
-
-        # Исправление дисторсии
-        undistorted: np.ndarray = cv2.undistort(img, self.camera_matrix, self.dist_coeffs, None, None)
 
         # Создание сравнительного изображения
         comparison: np.ndarray = np.hstack((img, undistorted))
@@ -402,3 +366,36 @@ class CameraCalibrator:
             'pattern_size': self.pattern_size,
             'num_images': len(self.object_points)
         }
+
+
+def run_calibrate(logger: logging.Logger, images_folder: str = PATH_TO_CALIBRATE_IMG):
+    """Пример использования калибратора"""
+
+    # Создание калибратора
+    # Для стандартной шахматной доски 10x7 внутренних углов используйте (9,6)
+    calibrator = CameraCalibrator(logger, pattern_size=(9, 6))
+
+    logger.info("Starting camera calibration...")
+    logger.info("-" * 60)
+
+    if images_folder is None:
+        images_folder = PATH_TO_CALIBRATE_IMG
+    
+    # Подготовка директории для сохранения исправленных изображений
+    output_dir = os.path.join(images_folder, "undistorted_perspective")
+    os.makedirs(output_dir, exist_ok=True)
+     
+    # Выполнение калибровки
+    if calibrator.calibrate_from_images(images_folder):
+        # Сохранение результатов
+        calibrator.save_calibration("my_camera_calibration.npz")
+
+        # Пример исправления дисторсии
+        if calibrator.image_paths and calibrator.camera_matrix is not None:
+            for image_path in calibrator.image_paths:
+                logger.info(f"Processing image: {image_path}")
+                undistorted = calibrator.undistort_image(image_path, output_dir)
+        
+                # calibrator.show_comparison(image_path, undistorted)
+
+    logger.info("\nDone!")

@@ -195,8 +195,10 @@ cython_debug/
 
 *.idea/
 *.github/
+*.github
 logs/*
 
+my_files
 my_files/
 my_files/*
 *.npz

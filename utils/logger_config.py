@@ -1,4 +1,4 @@
- """
+"""
 Конфигурация логирования для библиотеки калибровки камеры.
 """
 
@@ -6,9 +6,8 @@ import logging
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
-from ..constants import LOGGING_CONFIG
+from constants import LOGGING_CONFIG
 
 
 def setup_logger(name: str = 'camera_calibrator', 

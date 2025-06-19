@@ -1,7 +1,7 @@
- """
+"""
 Константы библиотеки калибровки камеры.
 """
-
+import os
 from typing import Tuple, List, Dict, Any
 
 # Размеры по умолчанию
@@ -89,3 +89,8 @@ INFO_MESSAGES: Dict[str, str] = {
     'corners_found': 'Chessboard corners found successfully',
     'undistortion_complete': 'Image undistortion completed successfully'
 }
+
+# Путь к папке с калибруемыми изображениями (в корне проекта)
+PATH_TO_CALIBRATE_IMG = "calibration_images/frames"
+# Путь к папке с изображениями для калибровки fisheye (в корне проекта)
+PATH_TO_CALIBRATE_FISHEYE_IMG = "fisheye_calibration_images/frames"
